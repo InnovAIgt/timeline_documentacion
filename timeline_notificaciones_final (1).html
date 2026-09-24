@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ciclo de notificaciones de documentación</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-0: #050506;
+    --bg-1: #0b0b0e;
+    --surface-1: #131317;
+    --border: #24242b;
+    --text-primary: #f2f2f4;
+    --text-secondary: #9b9ba5;
+    --text-muted: #6b6b74;
+  }
+
+  html, body {
+    background: var(--bg-0);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+
+  .page {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(59,122,184,0.14), transparent 42%),
+      radial-gradient(circle at 88% 78%, rgba(200,31,31,0.12), transparent 45%),
+      radial-gradient(circle at 80% 15%, rgba(47,160,135,0.10), transparent 40%),
+      linear-gradient(180deg, #060607 0%, #0a0a0c 45%, #08080a 100%);
+  }
+
+  .container {
+    padding: 3.5rem 1.5rem 4.5rem;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeDown 0.7s ease forwards;
+  }
+
+  .header .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #7fa8d6;
+    background: rgba(59,122,184,0.12);
+    border: 1px solid rgba(59,122,184,0.28);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+
+  .header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.55rem;
+    letter-spacing: -0.01em;
+  }
+
+  .header p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+
+  /* Timeline vertical */
+  .timeline {
+    position: relative;
+  }
+
+  .timeline-track {
+    position: absolute;
+    left: 39px;
+    top: 20px;
+    bottom: 20px;
+    width: 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .timeline-track-fill {
+    position: absolute;
+    left: 39px;
+    top: 20px;
+    width: 3px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #8B5CF6 0%, #3B7AB8 16%, #C84A7B 38%, #2FA087 58%, #B87013 78%, #C81F1F 100%);
+    height: 0%;
+    transition: height 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .timeline.in-view .timeline-track-fill {
+    height: 100%;
+  }
+
+  .event {
+    position: relative;
+    display: flex;
+    gap: 1.5rem;
+    padding-bottom: 2.75rem;
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .event.visible {
+    animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .event:last-child { padding-bottom: 0; }
+
+  .event-marker {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 0 0 5px var(--bg-0), 0 8px 22px -8px rgba(0,0,0,0.7);
+    border: 2px solid;
+  }
+
+  .event-marker.m0 { background: linear-gradient(135deg, #B497EF 0%, #8B5CF6 100%); border-color: #5B36AA; }
+  .event-marker.m1 { background: linear-gradient(135deg, #6BABDD 0%, #3B7AB8 100%); border-color: #2A5A8A; }
+  .event-marker.m2 { background: linear-gradient(135deg, #E38AAD 0%, #C84A7B 100%); border-color: #964555; }
+  .event-marker.m3 { background: linear-gradient(135deg, #4EBFA8 0%, #2FA087 100%); border-color: #1B6B5F; }
+  .event-marker.m4 { background: linear-gradient(135deg, #E0A83E 0%, #B87013 100%); border-color: #8A5609; }
+  .event-marker.m5 { background: linear-gradient(135deg, #EA6E6D 0%, #C81F1F 100%); border-color: #8A1515; }
+
+  .event.pulse .event-marker::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+  }
+
+  .event-marker.m0 { color: #8B5CF6; }
+  .event.pulse .event-marker::after {
+    animation: pulseRing 2.2s ease-out infinite;
+  }
+
+  .event-content {
+    flex: 1;
+    padding-top: 8px;
+  }
+
+  .event-top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .event-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .notif-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .notif-pill.none { background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border); }
+  .notif-pill.p0 { background: rgba(139,92,246,0.16); color: #C6AEFB; border: 1px solid rgba(139,92,246,0.3); }
+  .notif-pill.p2 { background: rgba(200,74,123,0.16); color: #F1A9C4; border: 1px solid rgba(200,74,123,0.3); }
+  .notif-pill.p3 { background: rgba(47,160,135,0.16); color: #7FDCC5; border: 1px solid rgba(47,160,135,0.3); }
+  .notif-pill.p4 { background: rgba(184,112,19,0.18); color: #F0BE7C; border: 1px solid rgba(184,112,19,0.32); }
+  .notif-pill.p5 { background: rgba(200,31,31,0.16); color: #F3A0A0; border: 1px solid rgba(200,31,31,0.3); }
+
+  .event-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    max-width: 460px;
+  }
+
+  .event-desc strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* Rules box */
+  .rules-box {
+    margin-top: 3rem;
+    padding: 1.5rem 1.75rem;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .rules-box.visible {
+    animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .rules-box h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1.1rem;
+  }
+
+  .rule-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0.9rem;
+    align-items: flex-start;
+  }
+
+  .rule-item:last-child { margin-bottom: 0; }
+
+  .rule-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6BABDD;
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  .rule-item p {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .rule-item strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes riseIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulseRing {
+    0% { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .event, .header, .rules-box { opacity: 1 !important; transform: none !important; }
+    .timeline-track-fill { height: 100% !important; }
+  }
+
+  @media (max-width: 560px) {
+    .event { gap: 1rem; }
+    .event-marker { width: 64px; height: 64px; font-size: 26px; }
+    .timeline-track, .timeline-track-fill { left: 31px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="container">
+    <div class="header">
+      <span class="eyebrow">📄 Documentación</span>
+      <h1>Ciclo de notificaciones de documentación</h1>
+      <p>Cómo y cuándo se avisa sobre documentación pendiente</p>
+    </div>
+
+    <div class="timeline" id="timeline">
+      <div class="timeline-track"></div>
+      <div class="timeline-track-fill"></div>
+
+      <!-- Evento 0: apertura -->
+      <div class="event pulse">
+        <div class="event-marker m0">✉️</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Se marca como pendiente</span>
+            <span class="notif-pill p0">✉️ Correo de apertura</span>
+          </div>
+          <p class="event-desc">En cuanto la documentación queda <strong>marcada como pendiente</strong>, se envía un único correo notificando <strong>cuántos documentos hacen falta</strong>. Es solo el aviso inicial, nada más.</p>
+        </div>
+      </div>
+
+      <!-- Evento 1 -->
+      <div class="event">
+        <div class="event-marker m1">📋</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Pendiente</span>
+            <span class="notif-pill none">Sin notificación</span>
+          </div>
+          <p class="event-desc">La documentación aún tiene <strong>más de 3 días</strong> antes de vencer. No se envía ningún recordatorio en esta fase.</p>
+        </div>
+      </div>
+
+      <!-- Evento 2 -->
+      <div class="event">
+        <div class="event-marker m2">⏰</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Faltan 3 días</span>
+            <span class="notif-pill p2">🔔 Recordatorio</span>
+          </div>
+          <p class="event-desc">Se activa el primer recordatorio al llegar a <strong>72 horas exactas</strong> para el vencimiento.</p>
+        </div>
+      </div>
+
+      <!-- Evento 3 -->
+      <div class="event">
+        <div class="event-marker m3">⚠️</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Vencida</span>
+            <span class="notif-pill p3">🔔 Diaria</span>
+          </div>
+          <p class="event-desc">Una vez vencida, se envía <strong>como máximo una notificación cada 24 horas</strong> hasta que se complete o reprograme.</p>
+        </div>
+      </div>
+
+      <!-- Evento 4 -->
+      <div class="event">
+        <div class="event-marker m4">📅</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Reprogramada</span>
+            <span class="notif-pill p4">🔄 Recalculada</span>
+          </div>
+          <p class="event-desc">Si la <strong>nueva fecha queda a más de 3 días</strong>, las notificaciones se pausan y se reanudan cuando vuelvan a faltar 72 horas.</p>
+        </div>
+      </div>
+
+      <!-- Evento 5 -->
+      <div class="event">
+        <div class="event-marker m5">✅</div>
+        <div class="event-content">
+          <div class="event-top-row">
+            <span class="event-title">Completada</span>
+            <span class="notif-pill p5">✅ Finalizado</span>
+          </div>
+          <p class="event-desc">Al completarse la documentación se envía una <strong>notificación de cierre</strong> y el ciclo termina.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rules-box">
+      <h2>Reglas clave</h2>
+      <div class="rule-item">
+        <div class="rule-dot"></div>
+        <p><strong>Apertura:</strong> al marcarse como pendiente se envía un correo único indicando cuántos documentos faltan.</p>
+      </div>
+      <div class="rule-item">
+        <div class="rule-dot"></div>
+        <p><strong>Activación:</strong> los recordatorios inician exactamente cuando faltan 3 días (72 horas) para el vencimiento.</p>
+      </div>
+      <div class="rule-item">
+        <div class="rule-dot"></div>
+        <p><strong>Frecuencia:</strong> nunca más de una notificación cada 24 horas, incluso después de vencer.</p>
+      </div>
+      <div class="rule-item">
+        <div class="rule-dot"></div>
+        <p><strong>Reprogramación:</strong> el contador se recalcula según la nueva fecha límite; si queda a más de 3 días, se pausa hasta acercarse otra vez.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var timeline = document.getElementById('timeline');
+    var events = document.querySelectorAll('.event');
+    var rulesBox = document.querySelector('.rules-box');
+
+    var eventObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry, i) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var idx = Array.prototype.indexOf.call(events, el);
+          setTimeout(function() {
+            el.classList.add('visible');
+          }, 0);
+          eventObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.25 });
+
+    events.forEach(function(el, i) {
+      el.style.animationDelay = (i * 0.05) + 's';
+      eventObserver.observe(el);
+    });
+
+    var timelineObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          timeline.classList.add('in-view');
+          timelineObserver.unobserve(timeline);
+        }
+      });
+    }, { threshold: 0.1 });
+    timelineObserver.observe(timeline);
+
+    var rulesObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          rulesBox.classList.add('visible');
+          rulesObserver.unobserve(rulesBox);
+        }
+      });
+    }, { threshold: 0.2 });
+    rulesObserver.observe(rulesBox);
+  })();
+</script>
+</body>
+</html>
